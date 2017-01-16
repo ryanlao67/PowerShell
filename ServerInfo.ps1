@@ -1,7 +1,7 @@
-#$PSResult = New-Object PSObject
+$PSResult = New-Object PSObject
 $sysinfo = Get-WmiObject -Class Win32_ComputerSystem
 $OSinfo = Get-WmiObject -class Win32_OperatingSystem
-$KAV = Get-WmiObject -Class win32_product | where {$_.Name -match 'Kaspersky' -and $_.Name -match 'for Windows' -and $_.Name -notmatch 'Administration'}
+$KAV = Get-WmiObject -Class win32_product | where {$_.Name -match 'Kaspersky' -and $_.Name -match 'for Windows'}
 $KAGT = Get-WmiObject -Class win32_product | where {$_.Name -match 'Kaspersky' -and $_.Name -match 'Agent'}
 If($KAV)
 {
@@ -43,13 +43,13 @@ If($SRVROLE -eq $NULL)
     $SRVROLE = 'App Server'
 }
 
-#Add-Member -inputObject $PSResult -memberType NoteProperty -name 'Server Name' -Value $sysinfo.Name
-#Add-Member -inputObject $PSResult -memberType NoteProperty -name 'Domain' -Value $sysinfo.Domain
-#Add-Member -inputObject $PSResult -memberType NoteProperty -name 'OS Type' -Value $OSinfo.Caption
-#Add-Member -inputObject $PSResult -memberType NoteProperty -name 'KAV Version' -Value $KAVVersion
-#Add-Member -inputObject $PSResult -memberType NoteProperty -name 'Klagent Version' -Value $KAGT.Version
-#Add-Member -inputObject $PSResult -memberType NoteProperty -name 'IIS Version' -Value $IISVersion
-#Add-Member -inputObject $PSResult -memberType NoteProperty -name 'SQL Version' -Value $SQLVersion
-#Add-Member -inputObject $PSResult -memberType NoteProperty -name 'Server Role' -Value $SRVROLE
+Add-Member -inputObject $PSResult -memberType NoteProperty -name 'Server Name' -Value $sysinfo.Name
+Add-Member -inputObject $PSResult -memberType NoteProperty -name 'Domain' -Value $sysinfo.Domain
+Add-Member -inputObject $PSResult -memberType NoteProperty -name 'OS Type' -Value $OSinfo.Caption
+Add-Member -inputObject $PSResult -memberType NoteProperty -name 'KAV Version' -Value $KAVVersion
+Add-Member -inputObject $PSResult -memberType NoteProperty -name 'Klagent Version' -Value $KAGT.Version
+Add-Member -inputObject $PSResult -memberType NoteProperty -name 'IIS Version' -Value $IISVersion
+Add-Member -inputObject $PSResult -memberType NoteProperty -name 'SQL Version' -Value $SQLVersion
+Add-Member -inputObject $PSResult -memberType NoteProperty -name 'Server Role' -Value $SRVROLE
 
-$PSResult = $sysinfo.Name + ',' + $sysinfo.Domain + ',' + $OSinfo.Caption + ',' + $KAVVersion + ',' + $KAGTVersion + ',' + $IISVersion + ',' + $SQLVersion + ',' + $SRVROLE
+$PSResult
