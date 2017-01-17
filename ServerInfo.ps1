@@ -3,6 +3,7 @@ $sysinfo = Get-WmiObject -Class Win32_ComputerSystem
 $OSinfo = Get-WmiObject -class Win32_OperatingSystem
 $KAV = Get-WmiObject -Class win32_product | where {$_.Name -match 'Kaspersky' -and $_.Name -match 'for Windows'}
 $KAGT = Get-WmiObject -Class win32_product | where {$_.Name -match 'Kaspersky' -and $_.Name -match 'Agent'}
+$PatchDate = (Get-WmiObject -Class Win32_QuickFixEngineering | Sort-Object -Property Installedon -Descending | Select-Object -Property Installedon | Select-Object -First 1).Installedon.ToString('yyyyMMdd')
 If($KAV)
 {
     $KAVVersion = $KAV.Version
@@ -51,5 +52,6 @@ Add-Member -inputObject $PSResult -memberType NoteProperty -name 'Klagent Versio
 Add-Member -inputObject $PSResult -memberType NoteProperty -name 'IIS Version' -Value $IISVersion
 Add-Member -inputObject $PSResult -memberType NoteProperty -name 'SQL Version' -Value $SQLVersion
 Add-Member -inputObject $PSResult -memberType NoteProperty -name 'Server Role' -Value $SRVROLE
+Add-Member -inputObject $PSResult -memberType NoteProperty -name 'Patching Date' -Value $PatchDate
 
 $PSResult

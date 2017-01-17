@@ -43,6 +43,8 @@ If($SRVROLE -eq $NULL)
     $SRVROLE = 'App Server'
 }
 
+$PatchDate = (Get-WmiObject -Class Win32_QuickFixEngineering | Sort-Object -Property Installedon -Descending | Select-Object -Property Installedon | Select-Object -First 1).Installedon.ToString('yyyyMMdd')
+
 #Add-Member -inputObject $PSResult -memberType NoteProperty -name 'Server Name' -Value $sysinfo.Name
 #Add-Member -inputObject $PSResult -memberType NoteProperty -name 'Domain' -Value $sysinfo.Domain
 #Add-Member -inputObject $PSResult -memberType NoteProperty -name 'OS Type' -Value $OSinfo.Caption
@@ -52,6 +54,6 @@ If($SRVROLE -eq $NULL)
 #Add-Member -inputObject $PSResult -memberType NoteProperty -name 'SQL Version' -Value $SQLVersion
 #Add-Member -inputObject $PSResult -memberType NoteProperty -name 'Server Role' -Value $SRVROLE
 
-$PSResult = $sysinfo.Name + ',' + $sysinfo.Domain + ',' + $OSinfo.Caption + ',' + $KAVVersion + ',' + $KAGTVersion + ',' + $IISVersion + ',' + $SQLVersion + ',' + $SRVROLE
+$PSResult = $sysinfo.Name + ',' + $sysinfo.Domain + ',' + $OSinfo.Caption + ',' + $KAVVersion + ',' + $KAGTVersion + ',' + $IISVersion + ',' + $SQLVersion + ',' + $SRVROLE + ',' + $PatchDate
 
 $PSResult
