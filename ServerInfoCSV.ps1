@@ -53,3 +53,5 @@ If($SRVROLE -eq $NULL)
 #Add-Member -inputObject $PSResult -memberType NoteProperty -name 'Server Role' -Value $SRVROLE
 
 $PSResult = $sysinfo.Name + ',' + $sysinfo.Domain + ',' + $OSinfo.Caption + ',' + $KAVVersion + ',' + $KAGTVersion + ',' + $IISVersion + ',' + $SQLVersion + ',' + $SRVROLE
+
+$PSResult
