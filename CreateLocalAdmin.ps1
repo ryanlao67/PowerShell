@@ -12,3 +12,6 @@ Remove-Variable Password,BSTR,_password
 $userGroup = 'Administrators'
 $group = [ADSI]"WinNT://$env:COMPUTERNAME/$userGroup,group"
 $group.Add("WinNT://$env:COMPUTERNAME/$UserName,user")
+$User = [adsi]"WinNT://$env:computername/$Username"
+$User.UserFlags.value = $user.UserFlags.value -bor 0x10000
+$User.CommitChanges()
