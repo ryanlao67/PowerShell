@@ -15,4 +15,5 @@ Function ConfirmRegion ($useRegion)
         Write-Host 'Profile cannot be found, please run the script and enter a valid value again.' -Foregroundcolor Yellow
         Break;
     }
+    Return $awsRegion
 }
