@@ -1,6 +1,6 @@
 Function ConfirmRegion ($useRegion)
 {
-    if ($useRegion -eq 'awssg')
+    If ($useRegion -eq 'awssg')
     {
         $credProfile = $useRegion
         $awsRegion = 'ap-southeast-1'
