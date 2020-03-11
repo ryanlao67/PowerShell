@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration>
+	<General>
+		<LocalBackup>D:\ncscripts\Backup</LocalBackup>
+		<HomeFolder>D:\ncscripts</HomeFolder>
+		<LogFolder>D:\ncscripts\Log</LogFolder>
+	</General>
+	<Fileset>
+		<FilesetInclude>
+			<Parameter Name="Zabbix" value="C:\Zabbix"/>
+			<Parameter Name="WebContent" value="D:\WebContent"/>
+			<Parameter Name="Other1" value="D:\Program Files\Microsoft SQL Server\MSSQL12.MSSQLSERVER\MSSQL\Backup"/>
+			<Parameter Name="Other2" value="C:\Windows\System32\drivers\etc\hosts"/>
+		</FilesetInclude>
+		<FilesetExclude>
+			<Parameter Name="Executable file" value="*exe"/>
+			<Parameter Name="Log file" value="*log"/>
+		</FilesetExclude>
+	</Fileset>
+	<Compression>
+		<Objective>D:\ncscripts\Compression</Objective>
+		<Destination>D:\ncscripts\Backup</Destination>
+		<RemoveObjective>True</RemoveObjective>
+	</Compression>
+	<Encryption>
+		<EncryptionKey>D:\ncscripts\key_file</EncryptionKey>
+		<Objective>D:\ncscripts\Compression</Objective>
+		<Destination>D:\ncscripts\Encryption</Destination>
+		<RemoveObjective>True</RemoveObjective>
+	</Encryption>
+	<AWS_S3>
+		<S3Info>D:\Dev\Backup_Powershell\key_file2</S3Info>
+	</AWS_S3>
+    <OSS>
+		<OSSInfo>D:\Dev\Backup_Powershell\key_file3</OSSInfo>
+		<OSSPath>D:\Dev\OSS_Python_API\</OSSPath>
+    </OSS>
+</Configuration>

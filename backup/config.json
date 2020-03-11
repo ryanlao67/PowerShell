@@ -1,0 +1,12 @@
+{
+	"General": {
+		"LOCAL_BACKUP": "D:\\TestBackup",
+		"HOME_FOLDER": "/Users/cncuser/Documents/py/nc-backup-py",
+		"LOG_FOLDER": "/Users/cncuser/Documents/py/nc-backup-py/log/ncbackup.log"
+    },
+	"Schedule": {
+		"RUN1": "mon-sat",
+		"RUN2": "2nd-5th sun",
+		"RUN3": "1st sun"
+	}
+}
