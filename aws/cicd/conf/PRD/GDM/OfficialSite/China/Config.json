@@ -1,0 +1,28 @@
+{
+    "aws" : {
+        "region" : "cn-north-1",
+        "s3bucket" : "e1-cicd-release",
+        "s3logbucket" : "e1-cicd-release-log",
+        "environment" : "PRD",
+        "team" : "GDM",
+        "project" : "OfficialSite",
+        "iamurl" : "http://169.254.169.254/latest/meta-data/iam/security-credentials"
+    },
+    "jenkins" : {
+        "appPath" : "D:\\site",
+        "buildPath" : "D:\\build",
+        "deployLogPath": "D:\\deploymentlog",
+        "region" : "China",
+        "credPath" : "D:\\build\\credconf.json"
+    },
+    "target" : {
+        "appPath" : "D:\\site",
+        "logPath" : "D:\\deploymentlog",
+        "temp" : "C:\\temp",
+        "healthURL" : "http://localhost/englishfirst/kids/healthcheck.html"
+    },
+    "other" : {
+        "purge" : "-9999",
+        "logPrefix" : "DeploymentLog"
+    }
+}
