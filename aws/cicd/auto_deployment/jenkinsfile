@@ -1,0 +1,178 @@
+def call(body) {
+    def pipelineParams = [:]
+    def WS_CLEANUP = [
+            $class           : 'WsCleanup',
+            cleanWhenAborted : false,
+            cleanWhenFailure : false,
+            cleanWhenNotBuilt: false,
+            notFailBuild     : true
+    ]
+    def msbuild = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\BuildTools\\MSBuild\\15.0\\Bin\\MSBuild.exe"
+    def workDir = "${env.WORKSPACE}";
+    def branchName = "${env.BRANCH_NAME}"
+    def builderNumber = "${env.BUILD_NUMBER}"
+    body.resolveStrategy = Closure.DELEGATE_FIRST
+    body.delegate = pipelineParams
+    body()
+
+    def isCorrectBranch = false
+    def isCorrectEnvironment = false
+
+    def publishProfile = "";
+    def originalPublishProfile = pipelineParams.publishProfile
+    def env = "QA"
+    def scriptEnv = "QA"
+    def region = "China"
+    def ciServerName = "CNE1GDMCIBE01"
+
+    def generateStage= {String nodeName ->
+
+
+        stage("Set Parameter on node ${nodeName}") {
+
+            isCorrectBranch = (branchName == "alpha"
+                    || branchName == "Staging"
+                    || branchName == "Live"
+                    || branchName == "Hotfix")
+
+            isCorrectEnvironment =(nodeName == "CN-GDM-BACKEND-CI"
+                    ||(nodeName == "SG-GDM-BACKEND-CI"
+                    && branchName != "alpha"
+                    && branchName != "Hotfix"))
+
+            if(nodeName== "SG-GDM-BACKEND-CI")
+            {
+                region = "Singapore"
+                ciServerName = "SGE1GDMCIBE01"
+            }
+
+            if(branchName== "alpha")
+            {
+                publishProfile = originalPublishProfile
+            }
+            if(branchName == "Staging" && region=="China")
+            {
+                publishProfile = originalPublishProfile + "CNSTG"
+                env = "STG"
+                scriptEnv= "STG"
+            }
+            if(branchName == "Staging" && region=="Singapore")
+            {
+                publishProfile = originalPublishProfile + "SGSTG"
+                env = "STG"
+                scriptEnv= "STG"
+            }
+            if(branchName == "Live" && region=="China")
+            {
+                publishProfile = originalPublishProfile + "CNLive"
+                env = "Live"
+                scriptEnv= "PRD"
+            }
+            if(branchName == "Live" && region=="Singapore")
+            {
+                publishProfile = originalPublishProfile + "SGLive"
+                env = "Live"
+                scriptEnv= "PRD"
+            }
+
+            print "BRANCH: ${branchName}"
+            print "PublishProfile: ${publishProfile}"
+            print "env: ${env}"
+            print "scriptEnv: ${scriptEnv}"
+            print "pipelineParams.project: ${pipelineParams.project}"
+            print "pipelineParams.systemType: ${pipelineParams.systemType}"
+            print "pipelineParams.folderPath: ${pipelineParams.folderPath}"
+            print "region: ${region}"
+            print "ciServerName: ${ciServerName}"
+
+        }
+        stage("Checkout on node ${nodeName}") {
+
+
+            if(isCorrectBranch && isCorrectEnvironment)
+            {
+                step(WS_CLEANUP)
+
+                dir("D:/Jenkins/EF.Helix.${env}/") {
+                    checkout scm
+                }
+            }
+
+        }
+        stage("Build on node ${nodeName}") {
+
+            if(isCorrectBranch && isCorrectEnvironment)
+            {
+                bat "D:/Jenkins/nuget.exe restore D:/Jenkins/EF.Helix.${env}/src/Helix/Helix.sln"
+                bat "\"${msbuild}\" D:\\Jenkins\\EF.Helix.${env}\\src\\Helix\\${pipelineParams.folderPath}\\${pipelineParams.project}.csproj /t:Rebuild /p:ProductVersion=1.0.0.${builderNumber}"
+
+                if(nodeName == "CN-GDM-BACKEND-CI" && branchName == "alpha")
+                {
+                    // do unit test
+                    bat "\"${msbuild}\" D:\\Jenkins\\EF.Helix.${env}\\src\\Helix\\EF.Helix.CMS.UnitTest\\EF.Helix.CMS.UnitTest.csproj /t:Rebuild /p:ProductVersion=1.0.0.${builderNumber}"
+
+
+                    def stdout = powershell(returnStdout: true, script: """
+                                # Enable streams 3-6
+                                \$WorkDir = "\${ENV:WORKSPACE}"
+                                \$WorkDir = \$WorkDir.Replace("/","\\")
+                                D:\\Jenkins\\EF.Helix.${env}\\src\\Helix\\EF.Helix.CMS.UnitTest\\jenkins_unittests.bat D:\\Jenkins\\EF.Helix.${env}\\src\\Helix \$WorkDir
+                              """)
+                    println stdout
+                }
+
+                bat "Copy /y D:\\HelixPublishProfiles D:\\Jenkins\\EF.Helix.${env}\\src\\Helix\\${pipelineParams.folderPath}\\Properties\\PublishProfiles"
+
+                bat "\"${msbuild}\" D:\\Jenkins\\EF.Helix.${env}\\src\\Helix\\${pipelineParams.folderPath}\\${pipelineParams.project}.csproj /t:Rebuild /p:Configuration=Release /p:AllowUntrustedCertificate=True /p:MsDeployServiceUrl=http://${ciServerName}.e1ef.com/MsDeployAgentService /p:username= /p:MSDeployPublishMethod=RemoteAgent;PublishProfile=${publishProfile};DeployOnBuild=true /p:ProductVersion=1.0.0.${builderNumber}"
+            }
+
+        }
+
+        stage("Release on node ${nodeName}") {
+
+            if(isCorrectBranch && isCorrectEnvironment)
+            {
+                def releaseNote = powershell(returnStdout: true, script:   """
+                                    
+                                  cd D:\\build\\AutoDeployment 
+                                  .\\deploy-main.ps1 "D:\\build\\${scriptEnv}\\${pipelineParams.systemType}\\${region}\\Config.json" iis
+                                      """)
+                println releaseNote
+            }
+        }
+
+        stage("Publish Report on node ${nodeName}") {
+
+            if(nodeName == "CN-GDM-BACKEND-CI" && branchName == "alpha")
+            {
+                publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: '\\TestResult', reportFiles: 'TestResult.html', reportName: 'Unit Test Report', reportTitles: ''])
+                publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: '\\TestResult\\CoverageIndex.html', reportFiles: 'index.htm', reportName: 'Code Coverage Report', reportTitles: ''])
+            }
+
+        }
+
+    }
+
+    pipeline {
+        options {
+            buildDiscarder(logRotator(numToKeepStr: '5'))
+            disableConcurrentBuilds()
+        }
+        agent none
+
+        stages {
+            stage('parallel stage') {
+                steps {
+                    script {
+
+                        for ( i in pipelineParams.jenkinsSlave ) {
+                            node(i) {
+                                generateStage(i)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
