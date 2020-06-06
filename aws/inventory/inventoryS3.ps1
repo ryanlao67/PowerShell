@@ -75,7 +75,6 @@ foreach($region in $regions)
     {
         $dimension1.set_Value($s3Bucket.BucketName)
 
-        
         foreach($dimensionSet in $dimensionSets)
         {
             $metrics = (Get-CWMetricStatistics -Dimension $dimensionSet -EndTime (Get-Date).ToUniversalTime() -MetricName BucketSizeBytes -Namespace AWS/S3 -Period 1200 -ProfileName $profileName -Region $region.Region -StartTime (Get-Date).ToUniversalTime().AddDays(-1) -Statistic Maximum -Unit Bytes);
