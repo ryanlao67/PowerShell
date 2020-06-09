@@ -1,103 +1,142 @@
-﻿# Define Parameters
-$infoLine = ""
-$regions = Get-AWSRegion -IncludeChina
+# Define Parameters
+$awsRegions = Get-AWSRegion -IncludeChina
 $outFile = "C:\Users\ryanlao\Desktop\inventory\ec2.html"
 
-#GettingAllEC2InfoFromAWS
-foreach($region in $regions)
+$ec2Final = @()
+Foreach ($awsRegion in $awsRegions)
 {
-    $profileName = "awsgbl";
-    if($region.Region.StartsWith("cn-"))
-    {
-        $profileName = "awscn";
-    }
-    $EIPs = Get-EC2Address -ProfileName $profileName -Region $region.Region
-    $groups = Get-EC2Instance -ProfileName $profileName -Region $region.Region
-    $ec2servers=@()
-    foreach($group in $groups)
-    {
-        foreach($instance in $group.Instances)
-        {
-            $ec2servers+=$instance;
-        }
-    }
-    $ec2servers = $ec2servers | sort-object @{Expression={($_.Tags | Where-Object{$_.Key -eq "Name"}).Value}; Ascending=$true}
+	$awsProfile = 'awsgbl'
+	If($awsRegion.Region -match 'cn-')
+	{
+		$awsProfile = 'awscn'
+	}
+	$ec2Raw = Get-EC2Instance -ProfileName $awsProfile -Region $awsRegion
+	$ec2Instances = @()
 
-    foreach($instance in $ec2servers)
-    {
-        $htmlLine = "";
-        if($instance.State.Name -eq "running")
-        {
-            $htmlLine = "<tr><td><img src=running.png height=16 width=16 title=Running /></td>"
-        }
-        else
-        {
-            $htmlLine = "<tr><td><img src=stopped.png height=16 width=16 title=Stopped /></td>"
-        }
-        if($instance.Platform -ne "Windows")
-        {
-            $htmlLine = $($htmlLine + "<td>" + "Linux" + "</td>");
-        }
-        else
-        {
-            $htmlLine = $($htmlLine + "<td>" + $instance.Platform + "</td>");
-        }
-        $env =""
-        $tagEnv = ($instance.Tags | Where-Object {$_.Key -ieq "ENV"})
-        if($tagEnv.Key.Length -gt 0)
-        {
-            $env=$tagEnv.Value;
-        }
-        $purpose =""
-        $tagPurpose = ($instance.Tags | Where-Object {$_.Key -ieq "PURPOSE"})
-        if($tagPurpose.Key.Length -gt 0)
-        {
-            $purpose=$("<img src=Info.png height=16 width=16 title='" + $tagPurpose.Value + "'/>");
-        }
-        $tag = ($instance.Tags | Where-Object {$_.Key -ieq "Name"})
-        if($tag.Key.Length -gt 0)
-        {
-            $htmlLine = $($htmlLine + "<td>" + $tag.Value + "<sup>" + $env + "</sup>" + $purpose + "</td>");
-        }
-        else
-        {
-            $htmlLine = $($htmlLine + "<td></td>");
-        }
-        $htmlLine = $($htmlLine + "<td>" + $instance.InstanceType + "</td>");
-        $volumes = "";
-        foreach($blockDeviceMapping in $instance.BlockDeviceMappings)
-        {
-            $volume = (Get-EC2Volume -ProfileName $profileName -Region $region.Region -VolumeId $blockDeviceMapping.Ebs.VolumeId)
-            if($volumes.Length -gt 0)
-            {
-                $volumes = $($volumes + "," + $volume.Size.ToString() + "gb");
-            }
-            else
-            {
-                $volumes = $($volume.Size.ToString() + "gb");
-            }
-        }
-        $htmlLine = $($htmlLine + "<td>" + $volumes + "</td>");
-        $htmlLine = $($htmlLine + "<td>" + $instance.PrivateIPAddress + "</td>");
-        if(($EIPs| Where-Object {$_.PublicIp -eq $instance.PublicIPAddress}).Count -gt 0)
-        {
-            $htmlLine = $($htmlLine + "<td><u>" + $instance.PublicIPAddress + "</u></td>");
-        }
-        else
-        {
-            $htmlLine = $($htmlLine + "<td>" + $instance.PublicIPAddress + "</td>");
-        }
-        $htmlLine = $($htmlLine + "<td>" + $region.Name + "</td></tr>");
-        $infoLine += $htmlLine
-    }
+	Foreach($ec2 in $ec2Raw)
+	{
+		Foreach($ec2Instance in $ec2.Instances)
+		{
+			$ec2Instances += $ec2Instance
+		}
+	}
+	$ec2Sort = $ec2Instances | Sort-Object @{Expression={($_.Tags | Where {$_.Key -eq "TEAM"}).Value}; Ascending=$TRUE}
+	$ec2InfoAll = @()
+
+	Foreach($ec2Detail in $ec2sort)
+	{
+		$ec2Info = New-Object psobject
+		If($ec2Detail.Platform -eq $NULL)
+		{
+			$ec2Platform = 'Linux'
+		}
+		Else
+		{
+			$ec2Platform = $ec2Detail.Platform
+		}
+		$ec2Volume = $NULL
+		Foreach($ec2EBS in $ec2Detail.BlockDeviceMappings)
+		{
+			$ec2Volumes = (Get-EC2Volume -ProfileName $awsProfile -Region $awsRegion -VolumeId $ec2EBS.Ebs.VolumeId)
+			If($ec2Volume.Length -gt 0)
+			{
+				$ec2Volume = $($ec2Volume + "," + $ec2Volumes.Size.ToString() + "GB")
+			}
+			Else
+			{
+				$ec2Volume = $($ec2Volumes.Size.ToString() + "GB")
+			}
+		}
+		$ec2Region = $awsRegion.Region
+		$ec2State = $ec2Detail.State.Name
+		$ec2Name = ($ec2Detail.Tags | Where {$_.Key -ieq 'Name'}).Value
+		$ec2Team = ($ec2Detail.Tags | Where {$_.Key -ieq 'TEAM'}).Value
+		$ec2ENV = ($ec2Detail.Tags | Where {$_.Key -ieq 'ENV'}).Value
+		$ec2Purpose = ($ec2Detail.Tags | Where {$_.Key -ieq 'PURPOSE'}).Value
+		$ec2Type = $ec2Detail.InstanceType
+		$ec2PriIP = $ec2Detail.PrivateIpAddress
+		$ec2PubIP = $ec2Detail.PublicIpAddress
+		$ec2InstanceID = $ec2Detail.InstanceId
+		$ec2LaunchTime = $ec2Detail.LaunchTime
+
+		$ec2CPUUtilAVG = (Get-CWMetricStatistics `
+            -Dimension @{Name = "InstanceId"; Value = $ec2Detail.InstanceId} `
+            -MetricName CPUUtilization `
+            -ProfileName $awsProfile `
+            -Region $awsRegion `
+            -UtcStartTime (Get-Date).AddDays(-30) `
+            -UtcEndTime (Get-Date) `
+            -Namespace "AWS/EC2" `
+            -Period 2592000 `
+            -Statistic Average)
+		If($ec2CPUUtilAVG.Datapoints.Average -eq "")
+		{
+			$ec2CPUAVG = "N/A"
+		}
+		Else
+		{
+			$ec2CPUAVG = [Math]::Round($ec2CPUUtilAVG.Datapoints.Average[-1],2)
+		}
+
+        $ec2CPUUtilMAX = (Get-CWMetricStatistics `
+            -Dimension @{Name = "InstanceId"; Value = $ec2Detail.InstanceId} `
+            -MetricName CPUUtilization `
+            -ProfileName $awsProfile `
+            -Region $awsRegion `
+            -UtcStartTime (Get-Date).AddDays(-30) `
+            -UtcEndTime (Get-Date) `
+            -Namespace "AWS/EC2" `
+            -Period 2592000 `
+            -Statistic Maximum)
+		If($ec2CPUUtilMAX.Datapoints.Average -eq "")
+		{
+			$ec2CPUMAX = "N/A"
+		}
+		Else
+		{
+			$ec2CPUMAX = [Math]::Round($ec2CPUUtilMAX.Datapoints.Maximum[-1],2)
+		}
+
+		$ec2Info | Add-Member NoteProperty "ENV" $ec2ENV
+		$ec2Info | Add-Member NoteProperty "TEAM" $ec2Team
+		$ec2Info | Add-Member NoteProperty "EC2Name" $ec2Name
+		$ec2Info | Add-Member NoteProperty "PURPOSE" $ec2Purpose
+		$ec2Info | Add-Member NoteProperty "InstanceID" $ec2InstanceID
+		$ec2Info | Add-Member NoteProperty "PrivateIP" $ec2PriIP
+
+		If($ec2PubIP)
+		{
+			$ec2Info | Add-Member NoteProperty "PublicIP" $ec2PubIP
+		}
+		Else
+		{
+			$ec2Info | Add-Member NoteProperty "PublicIP" "N/A"
+		}
+		
+		$ec2Info | Add-Member NoteProperty "InstanceType" $ec2Type
+		$ec2Info | Add-Member NoteProperty "Platform" $ec2Platform
+		$ec2Info | Add-Member NoteProperty "Region" $ec2Region
+		$ec2Info | Add-Member NoteProperty "Status" $ec2State
+		$ec2Info | Add-Member NoteProperty "LaunchTime(UTC)" $ec2LaunchTime
+		$ec2Info | Add-Member NoteProperty "CPU Avg(%)" $ec2CPUAVG
+        $ec2Info | Add-Member NoteProperty "CPU Peak(%)" $ec2CPUMAX
+
+		$ec2InfoAll += $ec2Info
+	}
+	$ec2Final += $ec2InfoAll
 }
+$ec2Final = $ec2Final | Sort-Object ENV, TEAM, PURPOSE, EC2Name, Region
 
-#CombiningHtmlData
-$html = $("<html><body>Last Updated (UTC) - " + (Get-Date).ToUniversalTime() + "<table border=1 width=100%>");
-$html = $($html + "<tr><td></td><td><b>Platform</b></td><td><b>Name</b></td><td><b>Instance Type</b></td><td><b>Volumes</b></td><td><b>Private IP</b></td><td><b>Public IP</b></td><td><b>Region</b></td></tr>");
-$html = $($html + $infoLine + "<tr></tr>");
-$html = $($html + "</table></body></html>");
+# Inventory Format
+$htmlFormat = "<style>"
+$htmlFormat = $htmlFormat + "BODY{font-family: Sans-serif; font-size: 15px;}"
+$htmlFormat = $htmlFormat + "TABLE{border-width: 2px; border-style: solid; border-color: black; border-collapse: collapse; width: 100%;}"
+$htmlFormat = $htmlFormat + "TH{border-width: 2px; padding: 2px; border-style: solid; border-color: black;}"
+$htmlFormat = $htmlFormat + "TD{border-width: 2px; padding: 2px; border-style: solid; border-color: orange; white-space:nowrap;}"
+$htmlFormat = $htmlFormat + "</style>"
 
-#UploadFile
-$html | Set-Content $outFile
-Write-S3Object -BucketName inventory-ryanlao -File $outFile -ProfileName awsgbl
+# Upload File
+$updateTime = Get-Date
+$ec2HTML = $ec2Final | ConvertTo-HTML -Head $htmlFormat -Body "<H2>Updated on $updateTime</H2>"
+$ec2HTML | Set-Content $outFile
+Write-S3Object -BucketName inventory-ryanlao -File $outFile -ProfileName awsgbl -Region ap-northeast-1
